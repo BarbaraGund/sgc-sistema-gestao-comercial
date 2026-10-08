@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Registro - SGC{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 450px;">
+    <h1 class="h3 mb-4">Criar conta</h1>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('registro') }}">
+                <div class="mb-3">
+                    <label for="username" class="form-label">Usuário</label>
+                    <input type="text" class="form-control" id="username" name="username"
+                           value="{{ username or '' }}" autofocus>
+                </div>
+
+                <div class="mb-3">
+                    <label for="email" class="form-label">E-mail</label>
+                    <input type="text" class="form-control" id="email" name="email"
+                           value="{{ email or '' }}">
+                </div>
+
+                <div class="mb-3">
+                    <label for="senha" class="form-label">Senha</label>
+                    <input type="password" class="form-control" id="senha" name="senha"
+                           placeholder="Mínimo de 6 caracteres">
+                </div>
+
+                <div class="mb-3">
+                    <label for="confirmar_senha" class="form-label">Confirmar senha</label>
+                    <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha">
+                </div>
+
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <p class="text-center mt-3">
+        Já tem conta? <a href="{{ url_for('login') }}">Entrar</a>
+    </p>
+</div>
+{% endblock %}
