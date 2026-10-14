@@ -8,6 +8,20 @@
     <a href="{{ url_for('cliente_novo') }}" class="btn btn-primary">+ Novo cliente</a>
 </div>
 
+<!-- busca por nome -->
+<form method="GET" action="{{ url_for('clientes') }}" class="row g-2 mb-3">
+    <div class="col-sm">
+        <input type="text" class="form-control" name="q" value="{{ busca }}"
+               placeholder="Buscar cliente por nome">
+    </div>
+    <div class="col-sm-auto d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary">Buscar</button>
+        {% if busca %}
+        <a href="{{ url_for('clientes') }}" class="btn btn-outline-secondary">Limpar</a>
+        {% endif %}
+    </div>
+</form>
+
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -42,7 +56,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">Nenhum cliente cadastrado.</td>
+                    <td colspan="6" class="text-center text-muted py-4">{% if busca %}Nenhum cliente encontrado para "{{ busca }}".{% else %}Nenhum cliente cadastrado.{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

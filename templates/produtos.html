@@ -8,6 +8,20 @@
     <a href="{{ url_for('produto_novo') }}" class="btn btn-primary">+ Novo produto</a>
 </div>
 
+<!-- busca por nome -->
+<form method="GET" action="{{ url_for('produtos') }}" class="row g-2 mb-3">
+    <div class="col-sm">
+        <input type="text" class="form-control" name="q" value="{{ busca }}"
+               placeholder="Buscar produto por nome">
+    </div>
+    <div class="col-sm-auto d-flex gap-2">
+        <button type="submit" class="btn btn-outline-primary">Buscar</button>
+        {% if busca %}
+        <a href="{{ url_for('produtos') }}" class="btn btn-outline-secondary">Limpar</a>
+        {% endif %}
+    </div>
+</form>
+
 <div class="card shadow-sm">
     <div class="table-responsive">
         <table class="table table-striped table-hover align-middle mb-0">
@@ -49,7 +63,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">Nenhum produto cadastrado.</td>
+                    <td colspan="5" class="text-center text-muted py-4">{% if busca %}Nenhum produto encontrado para "{{ busca }}".{% else %}Nenhum produto cadastrado.{% endif %}</td>
                 </tr>
                 {% endfor %}
             </tbody>

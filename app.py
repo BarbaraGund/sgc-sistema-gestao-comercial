@@ -6,7 +6,7 @@ import re
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, abort, render_template, request, redirect, url_for, session, flash
 from models import db, Usuario, Cliente, Produto
 
 # configuração do app
@@ -33,6 +33,9 @@ def login_required(f):
     @wraps(f)
     def decorada(*args, **kwargs):
         if 'usuario_id' not in session:
+            if request.method != 'GET':
+                # tentou fazer uma ação sem estar logado
+                abort(403)
             flash('Faça login para acessar esta página.', 'warning')
             return redirect(url_for('login'))
         return f(*args, **kwargs)
@@ -282,7 +285,9 @@ def logout():
 @login_required
 def index():
     """página inicial, mostra o total de clientes e de produtos"""
-    return render_template('index.html')
+    return render_template('index.html',
+                           total_clientes=Cliente.query.count(),
+                           total_produtos=Produto.query.count())
 
 
 # clientes
@@ -290,8 +295,15 @@ def index():
 @login_required
 def clientes():
     """lista os clientes, com busca opcional pelo nome (?q=)"""
-    lista = Cliente.query.order_by(Cliente.nome).all()
-    return render_template('clientes.html', clientes=lista)
+    # texto digitado na busca
+    busca = request.args.get('q', '').strip()
+
+    consulta = Cliente.query
+    if busca:
+        consulta = consulta.filter(Cliente.nome.icontains(busca, autoescape=True))
+
+    lista = consulta.order_by(Cliente.nome).all()
+    return render_template('clientes.html', clientes=lista, busca=busca)
 
 
 @app.route('/cliente/novo', methods=['GET', 'POST'])
@@ -395,8 +407,15 @@ def cliente_excluir(id):
 @login_required
 def produtos():
     """lista os produtos, com busca opcional pelo nome (?q=)"""
-    lista = Produto.query.order_by(Produto.nome).all()
-    return render_template('produtos.html', produtos=lista)
+    # texto digitado na busca
+    busca = request.args.get('q', '').strip()
+
+    consulta = Produto.query
+    if busca:
+        consulta = consulta.filter(Produto.nome.icontains(busca, autoescape=True))
+
+    lista = consulta.order_by(Produto.nome).all()
+    return render_template('produtos.html', produtos=lista, busca=busca)
 
 
 @app.route('/produto/novo', methods=['GET', 'POST'])
@@ -496,6 +515,37 @@ def produto_excluir(id):
         flash('Erro ao excluir o produto. Tente novamente.', 'danger')
 
     return redirect(url_for('produtos'))
+
+
+# páginas de erro
+@app.errorhandler(404)
+def pagina_nao_encontrada(erro):
+    """página de erro 404"""
+    return render_template(
+        'erro.html', codigo=404, titulo='Página não encontrada',
+        mensagem='O endereço acessado não existe ou o registro foi removido.'
+    ), 404
+
+
+@app.errorhandler(403)
+def acesso_negado(erro):
+    """página de erro 403"""
+    return render_template(
+        'erro.html', codigo=403, titulo='Acesso negado',
+        mensagem='Você não tem permissão para realizar esta ação. '
+                 'Faça login e tente novamente.'
+    ), 403
+
+
+@app.errorhandler(500)
+def erro_interno(erro):
+    """página de erro 500, desfaz o que ficou pendente no banco"""
+    # deu erro no banco, desfaz
+    db.session.rollback()
+    return render_template(
+        'erro.html', codigo=500, titulo='Erro interno',
+        mensagem='Ocorreu um problema inesperado. Tente novamente em instantes.'
+    ), 500
 
 
 # rodar o app

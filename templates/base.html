@@ -20,11 +20,21 @@
             <div class="collapse navbar-collapse" id="menuPrincipal">
                 {% if session.get('usuario_id') %}
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('index') }}">Início</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('clientes') }}">Clientes</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('produtos') }}">Produtos</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint == 'index' }}" href="{{ url_for('index') }}">Início</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint in ('clientes', 'cliente_novo', 'cliente_editar') }}"
+                           href="{{ url_for('clientes') }}">Clientes</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ 'active' if request.endpoint in ('produtos', 'produto_novo', 'produto_editar') }}"
+                           href="{{ url_for('produtos') }}">Produtos</a>
+                    </li>
                 </ul>
-                <form method="POST" action="{{ url_for('logout') }}" class="d-flex">
+                <!-- nome do usuário e botão sair -->
+                <form method="POST" action="{{ url_for('logout') }}" class="d-flex align-items-center gap-3">
+                    <span class="navbar-text">Olá, <strong>{{ session.get('username') }}</strong></span>
                     <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
                 </form>
                 {% else %}
