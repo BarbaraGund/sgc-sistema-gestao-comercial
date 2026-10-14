@@ -1,17 +1,16 @@
-# models.py
-# Define os modelos (tabelas) do SGC usando SQLAlchemy.
+# modelos (tabelas) do sistema
 
 from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Instância do SQLAlchemy que será inicializada no app.py
+# o init_app é feito no app.py
 db = SQLAlchemy()
 
 
 class Usuario(db.Model):
-    """Representa a tabela 'usuario' no banco de dados."""
+    """tabela de usuários"""
 
     __tablename__ = 'usuario'
 
@@ -21,11 +20,11 @@ class Usuario(db.Model):
     senha_hash = db.Column(db.String(255), nullable=False)
 
     def set_senha(self, senha):
-        """Gera o hash da senha. A senha pura nunca é guardada."""
+        """guarda só o hash da senha, nunca a senha em texto"""
         self.senha_hash = generate_password_hash(senha)
 
     def verificar_senha(self, senha):
-        """Compara a senha digitada com o hash salvo no banco."""
+        """compara a senha digitada com o hash salvo"""
         return check_password_hash(self.senha_hash, senha)
 
     def __repr__(self):
@@ -33,19 +32,34 @@ class Usuario(db.Model):
 
 
 class Cliente(db.Model):
-    """Representa a tabela 'cliente' no banco de dados."""
+    """tabela de clientes"""
 
     __tablename__ = 'cliente'
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), nullable=False, unique=True)
-    # Somente números (DDD + número). Campo opcional.
+    # só números (ddd + número), não é obrigatório
     telefone = db.Column(db.String(11), nullable=True)
-    # CPF (11 dígitos) ou CNPJ (14 dígitos), salvo somente com números
+    # cpf (11) ou cnpj (14), guardado só com números
     cpf_cnpj = db.Column(db.String(14), nullable=False, unique=True)
     data_cadastro = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     def __repr__(self):
         return f'<Cliente {self.id} - {self.nome}>'
 
+
+class Produto(db.Model):
+    """tabela de produtos"""
+
+    __tablename__ = 'produto'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    preco = db.Column(db.Numeric(10, 2), nullable=False)
+    estoque = db.Column(db.Integer, nullable=False, default=0)
+    categoria = db.Column(db.String(50), nullable=True)
+    descricao = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return f'<Produto {self.id} - {self.nome}>'

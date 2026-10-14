@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}{{ titulo }} - SGC{% endblock %}
+
+{% block content %}
+<div class="mx-auto" style="max-width: 500px;">
+    <h1 class="h3 mb-4">{{ titulo }}</h1>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <!-- se tem produto_id é edição, senão é cadastro -->
+            <form method="POST"
+                  action="{{ url_for('produto_editar', id=produto_id) if produto_id else url_for('produto_novo') }}">
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome</label>
+                    <input type="text" class="form-control" id="nome" name="nome"
+                           value="{{ form.nome or '' }}" maxlength="100" autofocus>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-6 mb-3">
+                        <label for="preco" class="form-label">Preço (R$)</label>
+                        <input type="text" inputmode="decimal" class="form-control" id="preco" name="preco"
+                               value="{{ form.preco or '' }}" placeholder="Ex: 19,90">
+                    </div>
+
+                    <div class="col-sm-6 mb-3">
+                        <label for="estoque" class="form-label">Estoque</label>
+                        <input type="number" min="0" step="1" class="form-control" id="estoque" name="estoque"
+                               value="{{ form.estoque if form.estoque is not none and form.estoque != '' else '' }}"
+                               placeholder="Ex: 10">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="categoria" class="form-label">Categoria <span class="text-muted">(opcional)</span></label>
+                    <input type="text" class="form-control" id="categoria" name="categoria"
+                           value="{{ form.categoria or '' }}" maxlength="50">
+                </div>
+
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição <span class="text-muted">(opcional)</span></label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3">{{ form.descricao or '' }}</textarea>
+                </div>
+
+                <div class="d-flex justify-content-between mt-4">
+                    <a href="{{ url_for('produtos') }}" class="btn btn-outline-secondary">Voltar</a>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

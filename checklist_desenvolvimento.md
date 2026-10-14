@@ -43,11 +43,11 @@
 
 ## Fase 4: CRUD de Produtos
 
-- [ ] Modelar classe `Produto` (`id`, `nome`, `preco`, `estoque`, `categoria`, `descricao`)
-- [ ] Implementar Listagem com tabela estilizada
-- [ ] Implementar Criação, Edição e Exclusão
-- [ ] Validação de dados numéricos (preço e estoque >= 0)
-- [ ] **COMMIT:** "Implementa CRUD completo de produtos"
+- [x] Modelar classe `Produto` (`id`, `nome`, `preco`, `estoque`, `categoria`, `descricao`)
+- [x] Implementar Listagem com tabela estilizada
+- [x] Implementar Criação, Edição e Exclusão
+- [x] Validação de dados numéricos (preço e estoque >= 0)
+- [x] **COMMIT:** "Implementa CRUD completo de produtos"
 
 ---
 

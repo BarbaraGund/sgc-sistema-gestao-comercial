@@ -8,7 +8,7 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <!-- Se houver cliente_id, o formulário edita; senão, cadastra um novo -->
+            <!-- se tem cliente_id é edição, senão é cadastro -->
             <form method="POST"
                   action="{{ url_for('cliente_editar', id=cliente_id) if cliente_id else url_for('cliente_novo') }}">
                 <div class="mb-3">

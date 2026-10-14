@@ -3,39 +3,33 @@
 # Utiliza Flask-SQLAlchemy para persistência em um banco SQLite local.
 
 import re
+from decimal import Decimal, InvalidOperation
 from functools import wraps
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash
-from models import db, Usuario, Cliente
+from models import db, Usuario, Cliente, Produto
 
-# ---------------------------------------------------------------------------
-# Configuração da aplicação
-# ---------------------------------------------------------------------------
+# configuração do app
 app = Flask(__name__)
 
-# Chave usada para assinar a sessão e as mensagens flash
+# chave usada pela sessão e pelo flash
 app.config['SECRET_KEY'] = 'troque-esta-chave-em-producao'
 
-# Banco de dados SQLite (arquivo sgc.db, criado na pasta instance/)
+# banco sqlite, o arquivo sgc.db fica na pasta instance
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sgc.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Conecta o SQLAlchemy à aplicação Flask
+# liga o sqlalchemy no app
 db.init_app(app)
 
-# Cria as tabelas do banco de dados (caso ainda não existam)
+# cria as tabelas se ainda não existirem
 with app.app_context():
     db.create_all()
 
 
-# ---------------------------------------------------------------------------
-# Controle de acesso
-# ---------------------------------------------------------------------------
+# controle de acesso
 def login_required(f):
-    """
-    Decorator que bloqueia o acesso de usuários não autenticados.
-    Se não houver usuário na sessão, redireciona para a tela de login.
-    """
+    """bloqueia quem não está logado: GET manda pro login, POST dá erro 403"""
     @wraps(f)
     def decorada(*args, **kwargs):
         if 'usuario_id' not in session:
@@ -45,19 +39,14 @@ def login_required(f):
     return decorada
 
 
-# ---------------------------------------------------------------------------
-# Funções auxiliares
-# ---------------------------------------------------------------------------
+# funções auxiliares
 def email_valido(email):
-    """Retorna True se o e-mail tem o formato texto@dominio.extensao."""
+    """confere o formato básico do e-mail (texto@dominio.ext)"""
     return re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email) is not None
 
 
 def validar_registro(username, email, senha, confirmar_senha):
-    """
-    Valida os dados do cadastro de usuário.
-    Retorna uma mensagem de erro (string) ou None se estiver tudo certo.
-    """
+    """valida o cadastro de usuário, devolve a mensagem de erro ou None"""
     if not username or not email or not senha or not confirmar_senha:
         return 'Todos os campos são obrigatórios.'
 
@@ -77,10 +66,7 @@ def validar_registro(username, email, senha, confirmar_senha):
 
 
 def ler_form_cliente():
-    """
-    Lê os campos do formulário de cliente e já remove a formatação:
-    o CPF/CNPJ e o telefone são guardados somente com números.
-    """
+    """pega os campos do form e tira a pontuação do cpf/cnpj e do telefone"""
     return {
         'nome': request.form.get('nome', '').strip(),
         'email': request.form.get('email', '').strip().lower(),
@@ -90,10 +76,7 @@ def ler_form_cliente():
 
 
 def validar_cliente(dados):
-    """
-    Valida os dados do cliente.
-    Retorna uma mensagem de erro (string) ou None se estiver tudo certo.
-    """
+    """valida os dados do cliente, devolve a mensagem de erro ou None"""
     if not dados['nome'] or not dados['email'] or not dados['cpf_cnpj']:
         return 'Nome, e-mail e CPF/CNPJ são obrigatórios.'
 
@@ -115,11 +98,7 @@ def validar_cliente(dados):
 
 
 def verificar_duplicidade_cliente(dados, ignorar_id=None):
-    """
-    Verifica se já existe outro cliente com o mesmo e-mail ou CPF/CNPJ.
-    Na edição, o próprio cliente é ignorado (ignorar_id).
-    Retorna uma mensagem de erro (string) ou None.
-    """
+    """vê se já existe outro cliente com o mesmo e-mail ou cpf/cnpj (na edição ignora o próprio)"""
     por_email = Cliente.query.filter_by(email=dados['email'])
     por_documento = Cliente.query.filter_by(cpf_cnpj=dados['cpf_cnpj'])
 
@@ -135,12 +114,62 @@ def verificar_duplicidade_cliente(dados, ignorar_id=None):
     return None
 
 
-# ---------------------------------------------------------------------------
-# Filtros de exibição (usados nos templates)
-# ---------------------------------------------------------------------------
+def ler_form_produto():
+    """pega os campos do form de produto (ainda como texto)"""
+    return {
+        'nome': request.form.get('nome', '').strip(),
+        'preco': request.form.get('preco', '').strip(),
+        'estoque': request.form.get('estoque', '').strip(),
+        'categoria': request.form.get('categoria', '').strip(),
+        'descricao': request.form.get('descricao', '').strip(),
+    }
+
+
+def validar_produto(dados):
+    """valida o produto e converte preço e estoque, devolve (erro, valores)"""
+    if not dados['nome']:
+        return 'O nome do produto é obrigatório.', None
+
+    if len(dados['nome']) > 100:
+        return 'O nome deve ter no máximo 100 caracteres.', None
+
+    if len(dados['categoria']) > 50:
+        return 'A categoria deve ter no máximo 50 caracteres.', None
+
+    # aceita vírgula ou ponto no preço
+    try:
+        preco = Decimal(dados['preco'].replace(',', '.'))
+    except InvalidOperation:
+        return 'Informe um preço válido (ex.: 19,90).', None
+
+    if not preco.is_finite() or preco < 0:
+        return 'O preço deve ser um número maior ou igual a zero.', None
+
+    if preco > Decimal('99999999.99'):
+        return 'O preço máximo permitido é 99.999.999,99.', None
+
+    if preco != preco.quantize(Decimal('0.01')):
+        return 'O preço deve ter no máximo 2 casas decimais.', None
+
+    # estoque tem que ser inteiro e >= 0
+    try:
+        estoque = int(dados['estoque'])
+    except ValueError:
+        return 'O estoque deve ser um número inteiro.', None
+
+    if estoque < 0:
+        return 'O estoque deve ser maior ou igual a zero.', None
+
+    if estoque > 2147483647:
+        return 'O estoque informado é muito grande.', None
+
+    return None, {'preco': preco.quantize(Decimal('0.01')), 'estoque': estoque}
+
+
+# filtros usados nos templates
 @app.template_filter('documento')
 def formatar_documento(valor):
-    """Formata CPF (000.000.000-00) ou CNPJ (00.000.000/0000-00)."""
+    """coloca a pontuação do cpf ou do cnpj"""
     if valor and len(valor) == 11:
         return f'{valor[:3]}.{valor[3:6]}.{valor[6:9]}-{valor[9:]}'
     if valor and len(valor) == 14:
@@ -148,9 +177,16 @@ def formatar_documento(valor):
     return valor or ''
 
 
+@app.template_filter('moeda')
+def formatar_moeda(valor):
+    """mostra o valor no formato R$ 1.234,56"""
+    texto = f'{valor:,.2f}'
+    return 'R$ ' + texto.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
 @app.template_filter('telefone')
 def formatar_telefone(valor):
-    """Formata o telefone como (00) 00000-0000 ou (00) 0000-0000."""
+    """coloca o telefone no formato (00) 00000-0000"""
     if not valor:
         return '-'
     if len(valor) == 11:
@@ -160,15 +196,10 @@ def formatar_telefone(valor):
     return valor
 
 
-# ---------------------------------------------------------------------------
-# Rotas de autenticação
-# ---------------------------------------------------------------------------
+# login, registro e logout
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
-    """
-    GET  -> Exibe o formulário de registro.
-    POST -> Valida os dados e cria o usuário com a senha em hash.
-    """
+    """GET mostra o form, POST cria o usuário (senha com hash)"""
     if 'usuario_id' in session:
         return redirect(url_for('index'))
 
@@ -180,7 +211,7 @@ def registro():
 
         erro = validar_registro(username, email, senha, confirmar_senha)
 
-        # Verifica se já existe usuário com o mesmo username ou e-mail
+        # não deixa repetir username nem e-mail
         if not erro:
             existente = Usuario.query.filter(
                 (Usuario.username == username) | (Usuario.email == email)
@@ -193,12 +224,14 @@ def registro():
             return render_template('registro.html', username=username, email=email)
 
         usuario = Usuario(username=username, email=email)
+        # salva só o hash
         usuario.set_senha(senha)
 
         try:
             db.session.add(usuario)
             db.session.commit()
         except Exception:
+            # deu erro no banco, desfaz
             db.session.rollback()
             flash('Erro ao cadastrar o usuário. Tente novamente.', 'danger')
             return render_template('registro.html', username=username, email=email)
@@ -211,10 +244,7 @@ def registro():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """
-    GET  -> Exibe o formulário de login.
-    POST -> Confere usuário e senha (hash) e inicia a sessão.
-    """
+    """GET mostra o form, POST confere a senha e cria a sessão"""
     if 'usuario_id' in session:
         return redirect(url_for('index'))
 
@@ -225,13 +255,14 @@ def login():
         usuario = Usuario.query.filter_by(username=username).first()
 
         if usuario and usuario.verificar_senha(senha):
+            # limpa qualquer sessão antiga antes de logar
             session.clear()
             session['usuario_id'] = usuario.id
             session['username'] = usuario.username
             flash('Login realizado com sucesso!', 'success')
             return redirect(url_for('index'))
 
-        # Mesma mensagem para usuário inexistente e senha errada
+        # mesma mensagem nos dois casos, pra não mostrar se o usuário existe
         flash('Usuário ou senha inválidos.', 'danger')
         return render_template('login.html', username=username)
 
@@ -240,29 +271,25 @@ def login():
 
 @app.route('/logout', methods=['POST'])
 def logout():
-    """Limpa a sessão e volta para a tela de login."""
+    """limpa a sessão e volta para o login"""
     session.clear()
     flash('Você saiu do sistema.', 'info')
     return redirect(url_for('login'))
 
 
-# ---------------------------------------------------------------------------
-# Rotas do sistema (protegidas)
-# ---------------------------------------------------------------------------
+# página inicial
 @app.route('/')
 @login_required
 def index():
-    """Exibe a página inicial do sistema (somente usuários autenticados)."""
+    """página inicial, mostra o total de clientes e de produtos"""
     return render_template('index.html')
 
 
-# ---------------------------------------------------------------------------
-# Rotas de clientes (protegidas)
-# ---------------------------------------------------------------------------
+# clientes
 @app.route('/clientes')
 @login_required
 def clientes():
-    """Lista todos os clientes cadastrados em uma tabela."""
+    """lista os clientes, com busca opcional pelo nome (?q=)"""
     lista = Cliente.query.order_by(Cliente.nome).all()
     return render_template('clientes.html', clientes=lista)
 
@@ -270,11 +297,9 @@ def clientes():
 @app.route('/cliente/novo', methods=['GET', 'POST'])
 @login_required
 def cliente_novo():
-    """
-    GET  -> Exibe o formulário de cadastro.
-    POST -> Valida os dados, verifica duplicidade e salva o novo cliente.
-    """
+    """GET mostra o form, POST valida e salva o cliente"""
     if request.method == 'POST':
+        # pega o que foi digitado no form
         dados = ler_form_cliente()
         erro = validar_cliente(dados) or verificar_duplicidade_cliente(dados)
 
@@ -293,6 +318,7 @@ def cliente_novo():
             db.session.add(cliente)
             db.session.commit()
         except Exception:
+            # deu erro no banco, desfaz
             db.session.rollback()
             flash('Erro ao salvar o cliente. Tente novamente.', 'danger')
             return render_template('cliente_form.html', form=dados, titulo='Novo cliente')
@@ -306,13 +332,11 @@ def cliente_novo():
 @app.route('/cliente/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 def cliente_editar(id):
-    """
-    GET  -> Carrega o formulário preenchido com os dados do cliente.
-    POST -> Valida os dados, verifica duplicidade (ignorando o próprio cliente) e atualiza.
-    """
+    """GET carrega o form com os dados, POST valida e atualiza o cliente"""
     cliente = db.get_or_404(Cliente, id)
 
     if request.method == 'POST':
+        # pega o que foi digitado no form
         dados = ler_form_cliente()
         erro = validar_cliente(dados) or verificar_duplicidade_cliente(dados, ignorar_id=id)
 
@@ -329,6 +353,7 @@ def cliente_editar(id):
         try:
             db.session.commit()
         except Exception:
+            # deu erro no banco, desfaz
             db.session.rollback()
             flash('Erro ao atualizar o cliente. Tente novamente.', 'danger')
             return render_template('cliente_form.html', form=dados,
@@ -350,7 +375,7 @@ def cliente_editar(id):
 @app.route('/cliente/excluir/<int:id>', methods=['POST'])
 @login_required
 def cliente_excluir(id):
-    """Exclui o cliente (somente via POST; a confirmação é feita na tela)."""
+    """exclui o cliente (só por POST, a confirmação é feita na tela)"""
     cliente = db.get_or_404(Cliente, id)
 
     try:
@@ -358,14 +383,121 @@ def cliente_excluir(id):
         db.session.commit()
         flash('Cliente excluído com sucesso!', 'success')
     except Exception:
+        # deu erro no banco, desfaz
         db.session.rollback()
         flash('Erro ao excluir o cliente. Tente novamente.', 'danger')
 
     return redirect(url_for('clientes'))
 
 
-# ---------------------------------------------------------------------------
-# Execução da aplicação
-# ---------------------------------------------------------------------------
+# produtos
+@app.route('/produtos')
+@login_required
+def produtos():
+    """lista os produtos, com busca opcional pelo nome (?q=)"""
+    lista = Produto.query.order_by(Produto.nome).all()
+    return render_template('produtos.html', produtos=lista)
+
+
+@app.route('/produto/novo', methods=['GET', 'POST'])
+@login_required
+def produto_novo():
+    """GET mostra o form, POST valida e salva o produto"""
+    if request.method == 'POST':
+        # pega o que foi digitado no form
+        dados = ler_form_produto()
+        erro, valores = validar_produto(dados)
+
+        if erro:
+            flash(erro, 'danger')
+            return render_template('produto_form.html', form=dados, titulo='Novo produto')
+
+        produto = Produto(
+            nome=dados['nome'],
+            preco=valores['preco'],
+            estoque=valores['estoque'],
+            categoria=dados['categoria'] or None,
+            descricao=dados['descricao'] or None,
+        )
+
+        try:
+            db.session.add(produto)
+            db.session.commit()
+        except Exception:
+            # deu erro no banco, desfaz
+            db.session.rollback()
+            flash('Erro ao salvar o produto. Tente novamente.', 'danger')
+            return render_template('produto_form.html', form=dados, titulo='Novo produto')
+
+        flash('Produto cadastrado com sucesso!', 'success')
+        return redirect(url_for('produtos'))
+
+    return render_template('produto_form.html', form={}, titulo='Novo produto')
+
+
+@app.route('/produto/editar/<int:id>', methods=['GET', 'POST'])
+@login_required
+def produto_editar(id):
+    """GET carrega o form com os dados, POST valida e atualiza o produto"""
+    produto = db.get_or_404(Produto, id)
+
+    if request.method == 'POST':
+        # pega o que foi digitado no form
+        dados = ler_form_produto()
+        erro, valores = validar_produto(dados)
+
+        if erro:
+            flash(erro, 'danger')
+            return render_template('produto_form.html', form=dados,
+                                   titulo='Editar produto', produto_id=id)
+
+        produto.nome = dados['nome']
+        produto.preco = valores['preco']
+        produto.estoque = valores['estoque']
+        produto.categoria = dados['categoria'] or None
+        produto.descricao = dados['descricao'] or None
+
+        try:
+            db.session.commit()
+        except Exception:
+            # deu erro no banco, desfaz
+            db.session.rollback()
+            flash('Erro ao atualizar o produto. Tente novamente.', 'danger')
+            return render_template('produto_form.html', form=dados,
+                                   titulo='Editar produto', produto_id=id)
+
+        flash('Produto atualizado com sucesso!', 'success')
+        return redirect(url_for('produtos'))
+
+    form = {
+        'nome': produto.nome,
+        'preco': f'{produto.preco:.2f}'.replace('.', ','),
+        'estoque': produto.estoque,
+        'categoria': produto.categoria,
+        'descricao': produto.descricao,
+    }
+    return render_template('produto_form.html', form=form,
+                           titulo='Editar produto', produto_id=id)
+
+
+@app.route('/produto/excluir/<int:id>', methods=['POST'])
+@login_required
+def produto_excluir(id):
+    """exclui o produto (só por POST, a confirmação é feita na tela)"""
+    produto = db.get_or_404(Produto, id)
+
+    try:
+        db.session.delete(produto)
+        db.session.commit()
+        flash('Produto excluído com sucesso!', 'success')
+    except Exception:
+        # deu erro no banco, desfaz
+        db.session.rollback()
+        flash('Erro ao excluir o produto. Tente novamente.', 'danger')
+
+    return redirect(url_for('produtos'))
+
+
+# rodar o app
 if __name__ == '__main__':
     app.run(debug=True)
