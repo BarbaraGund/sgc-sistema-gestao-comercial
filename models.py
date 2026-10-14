@@ -28,6 +28,7 @@ class Usuario(db.Model):
         return check_password_hash(self.senha_hash, senha)
 
     def __repr__(self):
+        """texto que aparece quando o objeto é impresso"""
         return f'<Usuario {self.id} - {self.username}>'
 
 
@@ -46,6 +47,7 @@ class Cliente(db.Model):
     data_cadastro = db.Column(db.DateTime, nullable=False, default=datetime.now)
 
     def __repr__(self):
+        """texto que aparece quando o objeto é impresso"""
         return f'<Cliente {self.id} - {self.nome}>'
 
 
@@ -62,4 +64,5 @@ class Produto(db.Model):
     descricao = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
+        """texto que aparece quando o objeto é impresso"""
         return f'<Produto {self.id} - {self.nome}>'

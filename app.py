@@ -1,7 +1,21 @@
-# app.py
-# Aplicação Flask do SGC (Sistema de Gestão Comercial).
-# Utiliza Flask-SQLAlchemy para persistência em um banco SQLite local.
+"""
+SGC - Sistema de Gestão Comercial (Flask + SQLAlchemy)
 
+Rotas:
+  /registro, /login, /logout        autenticação
+  /                                 página inicial
+  /clientes                         lista (aceita ?q=nome)
+  /cliente/novo                     cadastro
+  /cliente/editar/<id>              edição
+  /cliente/excluir/<id>             exclusão (POST)
+  /produtos                         lista (aceita ?q=nome)
+  /produto/novo                     cadastro
+  /produto/editar/<id>              edição
+  /produto/excluir/<id>             exclusão (POST)
+Só /registro e /login ficam abertas, o resto exige login.
+"""
+
+import os
 import re
 from decimal import Decimal, InvalidOperation
 from functools import wraps
@@ -13,7 +27,8 @@ from models import db, Usuario, Cliente, Produto
 app = Flask(__name__)
 
 # chave usada pela sessão e pelo flash
-app.config['SECRET_KEY'] = 'troque-esta-chave-em-producao'
+# (em produção o ideal é usar a variável de ambiente SECRET_KEY)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chave-de-desenvolvimento-troque-em-producao')
 
 # banco sqlite, o arquivo sgc.db fica na pasta instance
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sgc.db'
@@ -32,6 +47,7 @@ def login_required(f):
     """bloqueia quem não está logado: GET manda pro login, POST dá erro 403"""
     @wraps(f)
     def decorada(*args, **kwargs):
+        """só roda a rota se tiver usuário na sessão"""
         if 'usuario_id' not in session:
             if request.method != 'GET':
                 # tentou fazer uma ação sem estar logado
